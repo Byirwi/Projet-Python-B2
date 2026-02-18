@@ -99,3 +99,45 @@ class ShellCollisions:
         # Collision si la distance est inférieure au rayon du tank + rayon du projectile
         tank_radius = max(tank.width, tank.height) / 2
         return distance < (tank_radius + shell.radius)
+
+    @staticmethod
+    def check_map_collision(shell, game_map):
+        """
+        Vérifie si un projectile touche un obstacle de la carte
+
+        Args:
+            shell: Instance de Shell
+            game_map: Instance de GameMap
+
+        Returns:
+            bool: True si collision avec la carte, False sinon
+        """
+        bouncing_obstacles = game_map.get_bouncing_obstacles()
+        destroying_obstacles = game_map.get_destroying_obstacles() if hasattr(game_map, 'get_destroying_obstacles') else []
+
+        # Vérifier les obstacles destructeurs (eau)
+        from Game.Collisions.Map_Collisions import MapCollisions
+        destroy_collision = MapCollisions.check_shell_collision(shell, destroying_obstacles)
+        if destroy_collision:
+            return True
+
+        # Vérifier les obstacles rebondissants (rochers)
+        bounce_collision = MapCollisions.check_shell_collision(shell, bouncing_obstacles)
+        if bounce_collision:
+            return True
+
+        return False
+
+    @staticmethod
+    def check_tank_collision(shell, tank):
+        """
+        Vérifie si un projectile touche un tank
+
+        Args:
+            shell: Instance de Shell
+            tank: Instance de Tank
+
+        Returns:
+            bool: True si collision, False sinon
+        """
+        return ShellCollisions.check_shell_tank_collision(shell, tank)

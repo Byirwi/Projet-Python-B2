@@ -73,12 +73,21 @@ class MultiGame:
     def update(self):
         """Mise à jour du jeu"""
         # Mouvement du joueur
-        PlayerMovement.update(self.player)
+        keys = pygame.key.get_pressed()
+        solid_obstacles = self.game_map.get_solid_obstacles()
+        PlayerMovement.handle_input(self.player, keys, solid_obstacles)
+
+        # Viser la souris
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        self.player.aim_at_mouse(mouse_x, mouse_y, self.camera.x, self.camera.y)
+
+        # Mettre à jour le tank (cooldown, etc.)
+        self.player.update()
 
         # Mise à jour des projectiles du joueur
-        for shell in self.shells[:]:
-            ShellMovement.update(shell)
+        self.shells = ShellMovement.update_shells(self.shells)
 
+        for shell in self.shells[:]:
             # Collision avec la carte
             if ShellCollisions.check_map_collision(shell, self.game_map):
                 self.shells.remove(shell)
@@ -90,8 +99,9 @@ class MultiGame:
                 self.shells.remove(shell)
 
         # Mise à jour des projectiles de l'adversaire
+        self.opponent_shells = ShellMovement.update_shells(self.opponent_shells)
+
         for shell in self.opponent_shells[:]:
-            ShellMovement.update(shell)
 
             # Collision avec la carte
             if ShellCollisions.check_map_collision(shell, self.game_map):
@@ -145,25 +155,31 @@ class MultiGame:
         self.screen.fill((20, 20, 30))
 
         # Mettre à jour la caméra sur le joueur
-        self.camera.update(self.player)
+        self.camera.follow(self.player)
 
-        # Afficher la carte
-        for tile in self.game_map.tiles:
-            screen_x = tile.x - self.camera.x
-            screen_y = tile.y - self.camera.y
+        # Afficher la carte en utilisant la surface
+        camera_rect = pygame.Rect(self.camera.x, self.camera.y, MENU_WIDTH, MENU_HEIGHT)
+        self.screen.blit(self.game_map.surface, (0, 0), camera_rect)
+
+        # Afficher les obstacles (rochers) avec bordure
+        for obstacle in self.game_map.get_bouncing_obstacles():
+            screen_x = obstacle.x - self.camera.x
+            screen_y = obstacle.y - self.camera.y
             if -50 < screen_x < MENU_WIDTH + 50 and -50 < screen_y < MENU_HEIGHT + 50:
-                pygame.draw.rect(self.screen, (50, 50, 50), (screen_x, screen_y, 20, 20))
-                pygame.draw.rect(self.screen, (100, 100, 100), (screen_x, screen_y, 20, 20), 1)
+                pygame.draw.rect(self.screen, (105, 105, 105),
+                               (screen_x, screen_y, obstacle.width, obstacle.height))
+                pygame.draw.rect(self.screen, (70, 70, 70),
+                               (screen_x, screen_y, obstacle.width, obstacle.height), 3)
 
         # Afficher le joueur
         player_screen_x = self.player.x - self.camera.x
         player_screen_y = self.player.y - self.camera.y
-        pygame.draw.rect(self.screen, self.player.color, (player_screen_x, player_screen_y, 50, 50))
+        self.player.draw(self.screen, self.camera.x, self.camera.y)
 
         # Afficher l'adversaire
         opponent_screen_x = self.opponent.x - self.camera.x
         opponent_screen_y = self.opponent.y - self.camera.y
-        pygame.draw.rect(self.screen, self.opponent.color, (opponent_screen_x, opponent_screen_y, 50, 50))
+        self.opponent.draw(self.screen, self.camera.x, self.camera.y)
 
         # Afficher les projectiles du joueur
         for shell in self.shells:

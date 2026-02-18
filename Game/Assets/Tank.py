@@ -16,6 +16,10 @@ class Tank:
         self.fire_cooldown = 0
         self.fire_delay = 30  # Délai entre deux tirs (en frames, ~0.5s à 60 FPS)
         
+        # Health system
+        self.health = 100
+        self.max_health = 100
+
     def aim_at_mouse(self, mouse_x, mouse_y, camera_x, camera_y):
         """
         Fait viser le canon du tank vers la position de la souris
@@ -49,6 +53,17 @@ class Tank:
         """Vérifie si le tank peut tirer"""
         return self.fire_cooldown == 0
     
+    def take_damage(self, damage):
+        """
+        Inflige des dégâts au tank
+
+        Args:
+            damage: Nombre de points de dégâts
+        """
+        self.health -= damage
+        if self.health < 0:
+            self.health = 0
+
     def fire(self):
         """
         Crée un projectile tiré depuis ce tank
