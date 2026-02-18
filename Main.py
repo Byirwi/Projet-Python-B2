@@ -3,6 +3,7 @@ import pygame
 import sys
 from UI.Menu import MainMenu
 from UI.Multiplayer_Menu import MultiplayerMenu
+from UI.Host_Screen import HostScreen  # ✅ Import déjà en haut
 
 
 def main():
@@ -21,7 +22,7 @@ def main():
         # Traiter le choix
         if choice == "SOLO":
             print("→ Lancement du mode SOLO...")
-            #Lancer le jeu solo
+            # TODO: Lancer le jeu solo
 
         elif choice == "MULTIJOUEUR":
             # Afficher le menu multijoueur
@@ -29,26 +30,25 @@ def main():
             multi_choice = multi_menu.run()
 
             if multi_choice == "HÉBERGER":
-                print("→ Hébergement d'une partie...")
-                #Écran héberger
-                # from UI.Host_Screen import HostScreen
-                # host = HostScreen(screen)
-                # host.run()
+                # ✅ Afficher l'écran héberger
+                host_screen = HostScreen(screen)
+                result = host_screen.run()
+
+                if result == "CANCEL":
+                    # Retour au menu multijoueur
+                    pass
 
             elif multi_choice == "REJOINDRE":
                 print("→ Rejoindre une partie...")
-                #Écran rejoindre
-                # from UI.Join_Screen import JoinScreen
-                # join = JoinScreen(screen)
-                # join.run()
+                # TODO: Écran rejoindre
 
             elif multi_choice == "RETOUR":
-                # Retour au menu principal (la boucle va recommencer)
+                # Retour au menu principal
                 pass
 
         elif choice == "SCORES":
             print("→ Affichage des SCORES...")
-            #Afficher scoreboard
+            # TODO: Afficher scoreboard
 
         elif choice == "QUITTER":
             print("→ Au revoir !")
