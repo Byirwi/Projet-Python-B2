@@ -2,6 +2,8 @@
 import pygame
 import socket
 import sys
+import time
+from Game.Network import NetworkServer
 
 
 class HostScreen:  # ✅ Correction 1
@@ -17,6 +19,8 @@ class HostScreen:  # ✅ Correction 1
         # Réseau
         self.port = 5555
         self.local_ip = self.get_local_ip()  # ✅ Correction 2
+        self.server = NetworkServer(self.port)
+        self.client_connected = False
 
         # Couleurs
         self.COLOR_BG = (20, 20, 30)
@@ -99,18 +103,41 @@ class HostScreen:  # ✅ Correction 1
 
     def run(self):  # ✅ Correction 6 : Même niveau d'indentation que draw()
         """Boucle principale"""
+        # Démarrer le serveur
+        if not self.server.start():
+            print("Erreur: Impossible de démarrer le serveur")
+            return "CANCEL"
+
         running = True
+        wait_time = 0
+        max_wait = 60 * 5  # 5 secondes (60 FPS)
+
         while running:
             self.clock.tick(60)  # 60 FPS
+            wait_time += 1
 
             # Événements
             action = self.handle_events()
 
             if action == "QUIT":
+                self.server.stop()
                 pygame.quit()
                 sys.exit()
             elif action == "CANCEL":
+                self.server.stop()
                 return "CANCEL"  # Retour au menu multi
+
+            # Vérifier si un client s'est connecté
+            if self.server.client_socket is not None and not self.client_connected:
+                self.client_connected = True
+                print("✅ Client connecté! Lancement du jeu...")
+                time.sleep(1)  # Petit délai
+                return ("START_GAME", self.server)
+
+            # Timeout après 30 secondes
+            if wait_time > max_wait * 6:
+                self.server.stop()
+                return "TIMEOUT"
 
             # Affichage
             self.draw()
