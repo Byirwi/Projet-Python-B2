@@ -3,7 +3,8 @@ import pygame
 import sys
 from UI.Menu import MainMenu
 from UI.Multiplayer_Menu import MultiplayerMenu
-from UI.Host_Screen import HostScreen  # ✅ Import déjà en haut
+from UI.Host_Screen import HostScreen
+from Game.Solo_Game import SoloGame  # ← Import du mode solo
 
 
 def main():
@@ -22,7 +23,12 @@ def main():
         # Traiter le choix
         if choice == "SOLO":
             print("→ Lancement du mode SOLO...")
-            # TODO: Lancer le jeu solo
+            solo_game = SoloGame(screen)
+            result = solo_game.run()
+            
+            if result == "MENU":
+                # Retour au menu principal
+                pass
 
         elif choice == "MULTIJOUEUR":
             # Afficher le menu multijoueur
@@ -30,7 +36,7 @@ def main():
             multi_choice = multi_menu.run()
 
             if multi_choice == "HÉBERGER":
-                # ✅ Afficher l'écran héberger
+                # Afficher l'écran héberger
                 host_screen = HostScreen(screen)
                 result = host_screen.run()
 
