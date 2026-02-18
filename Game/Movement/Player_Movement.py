@@ -35,6 +35,19 @@ class PlayerMovement:
         if keys[pygame.K_RIGHT]:
             tank.x += tank.speed
             moved = True
+
+        if keys[pygame.K_z]:
+            tank.y -= tank.speed
+            moved = True
+        if keys[pygame.K_s]:
+            tank.y += tank.speed
+            moved = True
+        if keys[pygame.K_q]:
+            tank.x -= tank.speed
+            moved = True
+        if keys[pygame.K_d]:
+            tank.x += tank.speed
+            moved = True
             
         # Limiter le tank dans les bordures de la map
         tank.x = max(0, min(tank.x, MAP_WIDTH - tank.width))
