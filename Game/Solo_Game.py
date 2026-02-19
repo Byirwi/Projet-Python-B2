@@ -119,10 +119,6 @@ class SoloGame:
         )
         self.screen.blit(info_text, (10, 48))
         
-        # Affichage des points de vie
-        hp_text = self.font.render(f"HP: {self.player.health}", True, (255, 255, 255))
-        self.screen.blit(hp_text, (10, 35))
-
         # Barre de vie
         bar_x, bar_y = 10, 65
         bar_width, bar_height = 200, 20
