@@ -79,15 +79,19 @@ class SoloGame:
             self.shells, 
             bouncing_obstacles,
             destroying_obstacles,
-            [self.player]
+            [self.player]  # Le joueur peut être touché par ses propres rebonds
         )
         
-        # Traiter les collisions
+        # Traiter les collisions (friendly fire / rebonds)
         if collision_result['tanks_hit']:
             for tank, shell in collision_result['tanks_hit']:
                 tank.take_damage(25)
-                print(f"Tank touché à ({int(tank.x)}, {int(tank.y)}) !")
-        
+                print(f"Tank touché ! HP restants: {tank.health}")
+
+        # Supprimer les projectiles inactifs
+        if collision_result['shells_to_remove']:
+            self.shells = [shell for shell in self.shells if shell.active]
+
         # Faire suivre la caméra
         self.camera.follow(self.player)
     
@@ -119,14 +123,36 @@ class SoloGame:
         )
         self.screen.blit(info_text, (10, 48))
         
+        # Affichage des points de vie
+        hp_text = self.font.render(f"HP: {self.player.health}", True, (255, 255, 255))
+        self.screen.blit(hp_text, (10, 35))
+
+        # Barre de vie
+        bar_x, bar_y = 10, 65
+        bar_width, bar_height = 200, 20
+        hp_ratio = max(0.0, self.player.health / 100.0)
+
+        # Fond de la barre (rouge)
+        pygame.draw.rect(self.screen, (100, 0, 0), (bar_x, bar_y, bar_width, bar_height))
+        # Barre de vie (vert -> jaune -> rouge selon les HP)
+        if hp_ratio > 0.5:
+            bar_color = (0, 255, 0)
+        elif hp_ratio > 0.25:
+            bar_color = (255, 200, 0)
+        else:
+            bar_color = (255, 0, 0)
+        pygame.draw.rect(self.screen, bar_color, (bar_x, bar_y, int(bar_width * hp_ratio), bar_height))
+        # Bordure de la barre
+        pygame.draw.rect(self.screen, (255, 255, 255), (bar_x, bar_y, bar_width, bar_height), 2)
+
         # Indicateur de cooldown
         if self.player.fire_cooldown > 0:
             cooldown_text = self.font_small.render(
                 f"Rechargement...", 
                 True, (255, 100, 100)
             )
-            self.screen.blit(cooldown_text, (10, 72))
-        
+            self.screen.blit(cooldown_text, (10, 92))
+
         # Instructions en bas
         controls_text = self.font_small.render(
             "Flèches: Déplacer | Souris: Viser | Clic: Tirer | ESC: Menu", 
@@ -183,7 +209,53 @@ class SoloGame:
                 self.show_game_over_screen(2500)
                 return "LOSE"
             
+            # Vérifier si le joueur est mort
+            if self.player.health <= 0:
+                self._show_game_over()
+                return "MENU"
+
             # Affichage
             self.draw()
         
         return None
+
+    def _show_game_over(self):
+        """Affiche l'écran de Game Over pendant quelques secondes"""
+        font_big = pygame.font.Font(None, 72)
+        font_info = pygame.font.Font(None, 36)
+
+        start_time = pygame.time.get_ticks()
+        duration = 3000  # 3 secondes
+
+        while pygame.time.get_ticks() - start_time < duration:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    return  # Appuyer sur une touche pour skip
+
+            # Fond semi-transparent
+            overlay = pygame.Surface((MENU_WIDTH, MENU_HEIGHT))
+            overlay.fill((0, 0, 0))
+            overlay.set_alpha(180)
+            self.screen.blit(overlay, (0, 0))
+
+            # Texte GAME OVER
+            game_over_text = font_big.render("GAME OVER", True, (255, 0, 0))
+            game_over_rect = game_over_text.get_rect(center=(MENU_WIDTH // 2, MENU_HEIGHT // 2 - 30))
+            self.screen.blit(game_over_text, game_over_rect)
+
+            # Texte info
+            info_text = font_info.render("Vous avez été touché par votre propre projectile !", True, (255, 200, 100))
+            info_rect = info_text.get_rect(center=(MENU_WIDTH // 2, MENU_HEIGHT // 2 + 30))
+            self.screen.blit(info_text, info_rect)
+
+            # Retour menu
+            return_text = font_info.render("Retour au menu...", True, (200, 200, 200))
+            return_rect = return_text.get_rect(center=(MENU_WIDTH // 2, MENU_HEIGHT // 2 + 80))
+            self.screen.blit(return_text, return_rect)
+
+            pygame.display.flip()
+            self.clock.tick(FPS)
+

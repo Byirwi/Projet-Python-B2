@@ -67,11 +67,14 @@ class ShellCollisions:
             if tanks:
                 for tank in tanks:
                     if ShellCollisions.check_shell_tank_collision(shell, tank):
+                        # Le propriétaire peut être touché seulement après un rebond (friendly fire)
+                        if shell.owner == tank and shell.bounces == 0:
+                            continue
                         shell.active = False
                         result['shells_to_remove'].append(shell)
                         result['tanks_hit'].append((tank, shell))
                         break
-        
+
         return result
     
     @staticmethod
