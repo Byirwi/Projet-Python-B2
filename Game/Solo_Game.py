@@ -42,7 +42,10 @@ class SoloGame:
                 # ESC pour retourner au menu
                 if event.key == pygame.K_ESCAPE:
                     return "MENU"
-            
+                # R pour recharger manuellement
+                if event.key == pygame.K_r:
+                    self.player.reload()
+
             # Tir avec clic gauche
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Clic gauche
@@ -138,17 +141,30 @@ class SoloGame:
         # Bordure de la barre
         pygame.draw.rect(self.screen, (255, 255, 255), (bar_x, bar_y, bar_width, bar_height), 2)
 
-        # Indicateur de cooldown
-        if self.player.fire_cooldown > 0:
-            cooldown_text = self.font_small.render(
-                f"Rechargement...", 
-                True, (255, 100, 100)
+        # Indicateur de munitions / rechargement
+        ammo_y = 92
+        if self.player.reloading:
+            # Barre de rechargement
+            reload_text = self.font_small.render("Rechargement...", True, (255, 100, 100))
+            self.screen.blit(reload_text, (10, ammo_y))
+            # Barre de progression
+            reload_bar_x, reload_bar_y = 10, ammo_y + 20
+            reload_bar_w, reload_bar_h = 150, 10
+            progress = 1.0 - (self.player.reload_cooldown / self.player.reload_time)
+            pygame.draw.rect(self.screen, (60, 60, 60), (reload_bar_x, reload_bar_y, reload_bar_w, reload_bar_h))
+            pygame.draw.rect(self.screen, (255, 165, 0), (reload_bar_x, reload_bar_y, int(reload_bar_w * progress), reload_bar_h))
+            pygame.draw.rect(self.screen, (255, 255, 255), (reload_bar_x, reload_bar_y, reload_bar_w, reload_bar_h), 1)
+        else:
+            # Afficher les munitions sous forme de symboles
+            ammo_label = self.font_small.render(
+                f"Munitions: {'● ' * self.player.ammo}{'○ ' * (self.player.mag_size - self.player.ammo)}  [R] Recharger",
+                True, (255, 255, 0) if self.player.ammo > 0 else (255, 100, 100)
             )
-            self.screen.blit(cooldown_text, (10, 92))
+            self.screen.blit(ammo_label, (10, ammo_y))
 
         # Instructions en bas
         controls_text = self.font_small.render(
-            "Flèches: Déplacer | Souris: Viser | Clic: Tirer | ESC: Menu", 
+            "Flèches: Déplacer | Souris: Viser | Clic: Tirer | R: Recharger | ESC: Menu",
             True, (255, 255, 255)
         )
         self.screen.blit(controls_text, (10, MENU_HEIGHT - 30))

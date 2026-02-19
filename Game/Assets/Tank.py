@@ -14,11 +14,18 @@ class Tank:
 
         # Points de vie
         self.health = 100
-        
-        # Cooldown de tir
+
+        # Système de chargeur
+        self.mag_size = 3           # Taille du chargeur
+        self.ammo = self.mag_size   # Munitions restantes dans le chargeur
         self.fire_cooldown = 0
-        self.fire_delay = 30  # Délai entre deux tirs (en frames, ~0.5s à 60 FPS)
-        
+        self.fire_delay = 30        # Délai entre deux tirs (~0.5s à 60 FPS)
+
+        # Rechargement
+        self.reloading = False
+        self.reload_cooldown = 0
+        self.reload_time = 120      # Temps de rechargement (~2s à 60 FPS)
+
     def aim_at_mouse(self, mouse_x, mouse_y, camera_x, camera_y):
         """
         Fait viser le canon du tank vers la position de la souris
@@ -48,14 +55,29 @@ class Tank:
         if self.fire_cooldown > 0:
             self.fire_cooldown -= 1
 
+        # Gérer le rechargement
+        if self.reloading:
+            self.reload_cooldown -= 1
+            if self.reload_cooldown <= 0:
+                self.ammo = self.mag_size
+                self.reloading = False
+                self.reload_cooldown = 0
+
     def take_damage(self, amount):
         """Applique des degats au tank"""
         self.health = max(0, self.health - amount)
-    
+
+    def reload(self):
+        """Lance le rechargement manuellement (touche R)"""
+        if not self.reloading and self.ammo < self.mag_size:
+            self.reloading = True
+            self.reload_cooldown = self.reload_time
+            self.fire_cooldown = 0  # reset le cooldown de tir
+
     def can_fire(self):
         """Vérifie si le tank peut tirer"""
-        return self.fire_cooldown == 0
-    
+        return self.fire_cooldown == 0 and self.ammo > 0 and not self.reloading
+
     def fire(self):
         """
         Crée un projectile tiré depuis ce tank
@@ -79,9 +101,15 @@ class Tank:
         # Import ici pour éviter import circulaire
         from Game.Assets.Shell import Shell
         
-        # Activer le cooldown
+        # Consommer une munition et activer le cooldown
+        self.ammo -= 1
         self.fire_cooldown = self.fire_delay
-        
+
+        # Auto-reload si le chargeur est vide
+        if self.ammo <= 0:
+            self.reloading = True
+            self.reload_cooldown = self.reload_time
+
         return Shell(start_x, start_y, self.angle, self)
         
     def draw(self, screen, camera_x, camera_y):

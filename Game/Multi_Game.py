@@ -69,6 +69,8 @@ class MultiGame:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return "MENU"
+                if event.key == pygame.K_r:
+                    self.player.reload()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     shell = self.player.fire()
@@ -243,9 +245,20 @@ class MultiGame:
         self.screen.blit(opponent_label, (10, 72))
         self._draw_health_bar(10, 107, 200, 18, self.opponent.health)
 
-        if self.player.fire_cooldown > 0:
-            cooldown_text = self.font_small.render("Rechargement...", True, (255, 100, 100))
-            self.screen.blit(cooldown_text, (10, 132))
+        if self.player.reloading:
+            reload_text = self.font_small.render("Rechargement...", True, (255, 100, 100))
+            self.screen.blit(reload_text, (10, 132))
+            # Barre de progression du rechargement
+            progress = 1.0 - (self.player.reload_cooldown / self.player.reload_time)
+            pygame.draw.rect(self.screen, (60, 60, 60), (10, 152, 150, 10))
+            pygame.draw.rect(self.screen, (255, 165, 0), (10, 152, int(150 * progress), 10))
+            pygame.draw.rect(self.screen, (255, 255, 255), (10, 152, 150, 10), 1)
+        else:
+            ammo_label = self.font_small.render(
+                f"Munitions: {'● ' * self.player.ammo}{'○ ' * (self.player.mag_size - self.player.ammo)}  [R]",
+                True, (255, 255, 0) if self.player.ammo > 0 else (255, 100, 100)
+            )
+            self.screen.blit(ammo_label, (10, 132))
 
         if self.connection_lost:
             error_msg = self.font.render("CONNEXION PERDUE!", True, (255, 0, 0))
