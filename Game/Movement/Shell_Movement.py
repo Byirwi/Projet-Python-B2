@@ -1,20 +1,9 @@
 class ShellMovement:
-    """Gère le mouvement des projectiles"""
-    
+    """Met à jour et nettoie la liste de projectiles."""
+
     @staticmethod
     def update_shells(shells):
-        """
-        Met à jour tous les projectiles et retire les inactifs
-        
-        Args:
-            shells: Liste de Shell
-            
-        Returns:
-            Liste de Shell actifs
-        """
-        # Mettre à jour chaque projectile
+        """Tick tous les shells, retourne uniquement les actifs."""
         for shell in shells:
             shell.update()
-        
-        # Retirer les projectiles inactifs
-        return [shell for shell in shells if shell.active]
+        return [s for s in shells if s.active]
