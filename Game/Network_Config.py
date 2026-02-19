@@ -19,7 +19,7 @@ MAX_RECONNECT_ATTEMPTS = 3
 RECONNECT_DELAY = 1
 
 # Taille maximale des données par message (en bytes)
-MAX_MESSAGE_SIZE = 1024
+MAX_MESSAGE_SIZE = 4096
 
 # Adresse de liaison par défaut pour le serveur
 SERVER_BIND_ADDRESS = '0.0.0.0'
