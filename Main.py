@@ -59,7 +59,7 @@ def main():
                     multi_game = MultiGame(screen, server, is_host=True)
                     game_result = multi_game.run()
 
-                    # Enregistrer le score (WIN ou LOSE)
+                    # MENU_SCORED = scores déjà enregistrés et synchronisés dans le jeu
                     if game_result in ("WIN", "LOSE"):
                         won = game_result == "WIN"
                         name_screen = NameInput(screen, won, mode="multi")
@@ -67,6 +67,8 @@ def main():
                         if name:
                             add_score(name, won)
                             print(f"✅ Score enregistré pour {name} ({'Victoire' if won else 'Défaite'})")
+                    elif game_result == "MENU_SCORED":
+                        print("✅ Scores déjà enregistrés et synchronisés")
 
                 elif result == "CANCEL":
                     pass
@@ -89,7 +91,7 @@ def main():
                         multi_game = MultiGame(screen, client, is_host=False)
                         game_result = multi_game.run()
 
-                        # Enregistrer le score (WIN ou LOSE)
+                        # MENU_SCORED = scores déjà enregistrés et synchronisés dans le jeu
                         if game_result in ("WIN", "LOSE"):
                             won = game_result == "WIN"
                             name_screen = NameInput(screen, won, mode="multi")
@@ -97,6 +99,8 @@ def main():
                             if name:
                                 add_score(name, won)
                                 print(f"✅ Score enregistré pour {name} ({'Victoire' if won else 'Défaite'})")
+                        elif game_result == "MENU_SCORED":
+                            print("✅ Scores déjà enregistrés et synchronisés")
                     else:
                         print("❌ Erreur de connexion")
 

@@ -2,6 +2,7 @@
 import pygame
 import sys
 import math
+import time
 from Game.Assets.Map import GameMap
 from Game.Assets.Tank import Tank
 from Game.Assets.Shell import Shell
@@ -9,6 +10,8 @@ from Game.Assets.Camera import Camera
 from Game.Movement.Player_Movement import PlayerMovement
 from Game.Collisions.Shell_Collisions import ShellCollisions
 from Config import MENU_WIDTH, MENU_HEIGHT, FPS, MAP_WIDTH, MAP_HEIGHT
+from Score_Manager import add_score, get_leaderboard, merge_scores
+from UI.Name_Input import NameInput
 
 
 class MultiGame:
@@ -157,6 +160,10 @@ class MultiGame:
         data = self.network.receive()
         if data:
             try:
+                # Ignorer les messages non-jeu (sync scoreboard, rematch, etc.)
+                if "scores_sync" in data or "scores_merged" in data or "rematch" in data:
+                    return True
+
                 # Mise à jour position/angle adversaire
                 self.opponent.x = data.get("x", self.opponent.x)
                 self.opponent.y = data.get("y", self.opponent.y)
@@ -238,7 +245,9 @@ class MultiGame:
         pygame.display.flip()
 
     def _show_end_screen(self, won):
-        """Affiche l'écran de fin de partie avec option Rejouer / Menu"""
+        """Affiche l'écran de fin de partie avec option Rejouer / Menu.
+        Gère aussi la saisie du nom, l'enregistrement du score et la
+        synchronisation du scoreboard entre les deux joueurs."""
         font_big = pygame.font.Font(None, 72)
         font_info = pygame.font.Font(None, 36)
         font_option = pygame.font.Font(None, 48)
@@ -252,6 +261,46 @@ class MultiGame:
             title_color = (255, 0, 0)
             sub_text = "Votre tank a été détruit !"
 
+        # --- Étape 1 : Saisie du nom ---
+        name_screen = NameInput(self.screen, won, mode="multi")
+        player_name = name_screen.run()
+        if player_name:
+            add_score(player_name, won)
+
+        # --- Étape 2 : Synchroniser le scoreboard via le réseau ---
+        # Envoyer notre scoreboard complet à l'adversaire
+        try:
+            my_scores = get_leaderboard()
+            self.network.send({"scores_sync": my_scores})
+
+            # Attendre de recevoir le scoreboard de l'adversaire (timeout 5 s)
+            start_time = time.time()
+            remote_scores = None
+            while time.time() - start_time < 5:
+                data = self.network.receive()
+                if data and "scores_sync" in data:
+                    remote_scores = data["scores_sync"]
+                    break
+                pygame.time.wait(50)
+
+            if remote_scores:
+                merge_scores(remote_scores)
+                # Renvoyer le scoreboard fusionné pour que l'autre joueur le reçoive aussi
+                merged = get_leaderboard()
+                self.network.send({"scores_merged": merged})
+
+                # Attendre le scoreboard fusionné de l'adversaire aussi
+                start2 = time.time()
+                while time.time() - start2 < 3:
+                    data2 = self.network.receive()
+                    if data2 and "scores_merged" in data2:
+                        merge_scores(data2["scores_merged"])
+                        break
+                    pygame.time.wait(50)
+        except Exception as e:
+            print(f"Erreur sync scoreboard: {e}")
+
+        # --- Étape 3 : Menu Rejouer / Menu ---
         selected = 0
         options = ["REJOUER", "MENU"]
 
@@ -326,5 +375,5 @@ class MultiGame:
                         break
                     else:
                         self.network.stop() if self.is_host else self.network.disconnect()
-                        return "WIN" if won else "LOSE"
+                        return "MENU_SCORED"
 

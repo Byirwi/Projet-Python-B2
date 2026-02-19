@@ -70,3 +70,45 @@ def get_leaderboard():
     return scores
 
 
+def merge_scores(remote_scores):
+    """
+    Fusionne un leaderboard distant avec le leaderboard local.
+    Pour chaque joueur, on prend le maximum de wins, losses et games
+    afin que les deux côtés finissent avec les mêmes données.
+
+    Args:
+        remote_scores: Liste de dicts [{"name":..., "wins":..., "losses":..., "games":...}, ...]
+
+    Returns:
+        Liste fusionnée et triée
+    """
+    local_scores = load_scores()
+
+    # Indexer les scores locaux par nom (insensible à la casse)
+    index = {}
+    for entry in local_scores:
+        index[entry["name"].lower()] = entry
+
+    # Fusionner les scores distants
+    for remote in remote_scores:
+        key = remote["name"].lower()
+        if key in index:
+            local_entry = index[key]
+            local_entry["wins"] = max(local_entry["wins"], remote.get("wins", 0))
+            local_entry["losses"] = max(local_entry["losses"], remote.get("losses", 0))
+            local_entry["games"] = max(local_entry["games"], remote.get("games", 0))
+        else:
+            new_entry = {
+                "name": remote["name"],
+                "wins": remote.get("wins", 0),
+                "losses": remote.get("losses", 0),
+                "games": remote.get("games", 0),
+            }
+            local_scores.append(new_entry)
+            index[key] = new_entry
+
+    local_scores.sort(key=lambda s: s["wins"], reverse=True)
+    save_scores(local_scores)
+    return local_scores
+
+

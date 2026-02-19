@@ -13,7 +13,7 @@ class GameMap:
         self.COLOR_WATER = (30, 144, 255)     # Bleu eau
         self.COLOR_ROCK = (105, 105, 105)     # Gris roche
         
-        # Obstacles solides (rochers, murs, etc.) - REBONDISSENT
+        # Obstacles solides (rochers, murs, etc.) - REBONDISSENTl
         self.obstacles = [
             pygame.Rect(600, 400, 100, 100),    # Rocher 1
             pygame.Rect(1000, 600, 150, 80),    # Rocher 2
