@@ -6,7 +6,6 @@ from Game.Assets.Map import GameMap
 from Game.Assets.Tank import Tank
 from Game.Assets.Camera import Camera
 from Game.Movement.Player_Movement import PlayerMovement
-from Game.Movement.Shell_Movement import ShellMovement
 from Game.Collisions.Shell_Collisions import ShellCollisions
 from Game.Network import NetworkServer, NetworkClient
 from Config import MENU_WIDTH, MENU_HEIGHT, FPS, MAP_WIDTH, MAP_HEIGHT
@@ -72,36 +71,52 @@ class MultiGame:
 
     def update(self):
         """Mise à jour du jeu"""
-        # Mouvement du joueur
-        PlayerMovement.update(self.player)
+        keys = pygame.key.get_pressed()
+
+        # Mouvement du joueur avec collisions
+        solid_obstacles = self.game_map.get_solid_obstacles()
+        PlayerMovement.handle_input(self.player, keys, solid_obstacles)
+
+        # Mettre à jour le tank (cooldown, etc.)
+        self.player.update()
+
+        # Viser vers la souris
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        self.player.aim_at_mouse(mouse_x, mouse_y, self.camera.x, self.camera.y)
 
         # Mise à jour des projectiles du joueur
         for shell in self.shells[:]:
-            ShellMovement.update(shell)
+            shell.update()
 
-            # Collision avec la carte
-            if ShellCollisions.check_map_collision(shell, self.game_map):
-                self.shells.remove(shell)
-                continue
-
-            # Collision avec l'adversaire
-            if ShellCollisions.check_tank_collision(shell, self.opponent):
-                self.opponent.take_damage(25)
-                self.shells.remove(shell)
+        # Collisions pour les projectiles du joueur
+        bouncing_obstacles = self.game_map.get_bouncing_obstacles()
+        destroying_obstacles = self.game_map.get_destroying_obstacles()
+        player_collision_result = ShellCollisions.check_all_collisions(
+            self.shells,
+            bouncing_obstacles,
+            destroying_obstacles,
+            [self.opponent]
+        )
+        for tank, _shell in player_collision_result['tanks_hit']:
+            tank.take_damage(25)
+        if player_collision_result['shells_to_remove']:
+            self.shells = [shell for shell in self.shells if shell.active]
 
         # Mise à jour des projectiles de l'adversaire
         for shell in self.opponent_shells[:]:
-            ShellMovement.update(shell)
+            shell.update()
 
-            # Collision avec la carte
-            if ShellCollisions.check_map_collision(shell, self.game_map):
-                self.opponent_shells.remove(shell)
-                continue
-
-            # Collision avec le joueur
-            if ShellCollisions.check_tank_collision(shell, self.player):
-                self.player.take_damage(25)
-                self.opponent_shells.remove(shell)
+        # Collisions pour les projectiles de l'adversaire
+        opponent_collision_result = ShellCollisions.check_all_collisions(
+            self.opponent_shells,
+            bouncing_obstacles,
+            destroying_obstacles,
+            [self.player]
+        )
+        for tank, _shell in opponent_collision_result['tanks_hit']:
+            tank.take_damage(25)
+        if opponent_collision_result['shells_to_remove']:
+            self.opponent_shells = [shell for shell in self.opponent_shells if shell.active]
 
         # Recevoir les données du réseau
         if not self.receive_opponent_data():
@@ -145,39 +160,20 @@ class MultiGame:
         self.screen.fill((20, 20, 30))
 
         # Mettre à jour la caméra sur le joueur
-        self.camera.update(self.player)
+        self.camera.follow(self.player)
 
         # Afficher la carte
-        for tile in self.game_map.tiles:
-            screen_x = tile.x - self.camera.x
-            screen_y = tile.y - self.camera.y
-            if -50 < screen_x < MENU_WIDTH + 50 and -50 < screen_y < MENU_HEIGHT + 50:
-                pygame.draw.rect(self.screen, (50, 50, 50), (screen_x, screen_y, 20, 20))
-                pygame.draw.rect(self.screen, (100, 100, 100), (screen_x, screen_y, 20, 20), 1)
+        self.game_map.draw(self.screen, self.camera.x, self.camera.y)
 
-        # Afficher le joueur
-        player_screen_x = self.player.x - self.camera.x
-        player_screen_y = self.player.y - self.camera.y
-        pygame.draw.rect(self.screen, self.player.color, (player_screen_x, player_screen_y, 50, 50))
-
-        # Afficher l'adversaire
-        opponent_screen_x = self.opponent.x - self.camera.x
-        opponent_screen_y = self.opponent.y - self.camera.y
-        pygame.draw.rect(self.screen, self.opponent.color, (opponent_screen_x, opponent_screen_y, 50, 50))
-
-        # Afficher les projectiles du joueur
+        # Afficher les projectiles
         for shell in self.shells:
-            shell_screen_x = shell.x - self.camera.x
-            shell_screen_y = shell.y - self.camera.y
-            if -10 < shell_screen_x < MENU_WIDTH + 10 and -10 < shell_screen_y < MENU_HEIGHT + 10:
-                pygame.draw.rect(self.screen, (255, 255, 0), (shell_screen_x, shell_screen_y, 3, 7))
-
-        # Afficher les projectiles de l'adversaire
+            shell.draw(self.screen, self.camera.x, self.camera.y)
         for shell in self.opponent_shells:
-            shell_screen_x = shell.x - self.camera.x
-            shell_screen_y = shell.y - self.camera.y
-            if -10 < shell_screen_x < MENU_WIDTH + 10 and -10 < shell_screen_y < MENU_HEIGHT + 10:
-                pygame.draw.rect(self.screen, (255, 200, 0), (shell_screen_x, shell_screen_y, 3, 7))
+            shell.draw(self.screen, self.camera.x, self.camera.y)
+
+        # Afficher les tanks
+        self.player.draw(self.screen, self.camera.x, self.camera.y)
+        self.opponent.draw(self.screen, self.camera.x, self.camera.y)
 
         # Afficher les infos
         player_info = self.font.render(f"Vous: {self.player.health} HP", True, (0, 255, 0))

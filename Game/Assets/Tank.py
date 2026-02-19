@@ -11,6 +11,9 @@ class Tank:
         self.color = color
         self.speed = 3
         self.angle = 0  # Direction du tank (0 = haut)
+
+        # Points de vie
+        self.health = 100
         
         # Cooldown de tir
         self.fire_cooldown = 0
@@ -44,6 +47,10 @@ class Tank:
         # Réduire le cooldown de tir
         if self.fire_cooldown > 0:
             self.fire_cooldown -= 1
+
+    def take_damage(self, amount):
+        """Applique des degats au tank"""
+        self.health = max(0, self.health - amount)
     
     def can_fire(self):
         """Vérifie si le tank peut tirer"""
