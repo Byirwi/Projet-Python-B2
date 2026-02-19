@@ -32,6 +32,8 @@ def main():
             if result == "MENU":
                 # Retour au menu principal
                 pass
+            elif result == "LOSE":
+                print("💥 Défaite ! PV à 0.")
 
         elif choice == "MULTIJOUEUR":
             # Afficher le menu multijoueur

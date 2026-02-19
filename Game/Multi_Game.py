@@ -95,7 +95,7 @@ class MultiGame:
             self.shells,
             bouncing_obstacles,
             destroying_obstacles,
-            [self.opponent]
+            [self.player, self.opponent]
         )
         for tank, _shell in player_collision_result['tanks_hit']:
             tank.take_damage(25)
@@ -111,7 +111,7 @@ class MultiGame:
             self.opponent_shells,
             bouncing_obstacles,
             destroying_obstacles,
-            [self.player]
+            [self.player, self.opponent]
         )
         for tank, _shell in opponent_collision_result['tanks_hit']:
             tank.take_damage(25)

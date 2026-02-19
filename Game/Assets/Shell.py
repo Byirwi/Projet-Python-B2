@@ -12,7 +12,7 @@ class Shell:
         Args:
             x, y: Position de départ (centre du tank)
             angle: Angle de tir (en degrés)
-            owner: Référence au tank qui a tiré (pour éviter auto-collision)
+            owner: Référence au tank qui a tiré (pour attribution)
         """
         self.x = x
         self.y = y
