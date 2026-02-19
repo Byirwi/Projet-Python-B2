@@ -67,12 +67,10 @@ class ShellCollisions:
             if tanks:
                 for tank in tanks:
                     if ShellCollisions.check_shell_tank_collision(shell, tank):
-                        # Ne pas toucher le propriétaire du projectile
-                        if shell.owner != tank:
-                            shell.active = False
-                            result['shells_to_remove'].append(shell)
-                            result['tanks_hit'].append((tank, shell))
-                            break
+                        shell.active = False
+                        result['shells_to_remove'].append(shell)
+                        result['tanks_hit'].append((tank, shell))
+                        break
         
         return result
     
