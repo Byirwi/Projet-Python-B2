@@ -156,41 +156,54 @@ class MultiGame:
         self.network.send(data)
 
     def receive_opponent_data(self):
-        """Recevoir l'état de l'adversaire + ses projectiles du réseau"""
-        data = self.network.receive()
-        if data:
-            try:
-                # Ignorer les messages non-jeu (sync scoreboard, rematch, etc.)
-                if "scores_sync" in data or "scores_merged" in data or "rematch" in data:
-                    return True
+        """Recevoir l'état de l'adversaire + ses projectiles du réseau.
+        Draine toute la file d'attente et n'applique que le dernier
+        message d'état de jeu (pour éviter le retard / les dégâts en double)."""
+        latest_game_data = None
 
-                # Mise à jour position/angle adversaire
-                self.opponent.x = data.get("x", self.opponent.x)
-                self.opponent.y = data.get("y", self.opponent.y)
-                self.opponent.angle = data.get("angle", self.opponent.angle)
-                self.opponent.health = data.get("health", self.opponent.health)
+        # Vider toute la file : garder seulement le dernier état de jeu
+        while True:
+            data = self.network.receive()
+            if data is None:
+                break
+            # Messages non-jeu (sync scoreboard, rematch) → ignorer
+            if "scores_sync" in data or "scores_merged" in data or "rematch" in data:
+                continue
+            # C'est un message d'état de jeu → ne garder que le plus récent
+            latest_game_data = data
 
-                # Recréer les projectiles de l'adversaire depuis les données réseau
-                shells_data = data.get("shells_data", [])
-                new_opponent_shells = []
-                for sd in shells_data:
-                    # Créer un Shell "fantôme" avec les données reçues
-                    s = Shell(sd["x"], sd["y"], 0, self.opponent)
-                    # Écraser la vélocité calculée par le constructeur
-                    s.vx = sd["vx"]
-                    s.vy = sd["vy"]
-                    s.bounces = sd["bounces"]
-                    s.active = True
-                    # Mettre la bonne couleur selon les bounces
-                    s._update_color()
-                    new_opponent_shells.append(s)
-                self.opponent_shells = new_opponent_shells
+        if latest_game_data is None:
+            return True  # Pas de nouvelles données, ce n'est pas une erreur
 
-                return True
-            except Exception as e:
-                print(f"Erreur réception données: {e}")
-                return False
-        return True
+        try:
+            data = latest_game_data
+
+            # Mise à jour position/angle adversaire
+            self.opponent.x = data.get("x", self.opponent.x)
+            self.opponent.y = data.get("y", self.opponent.y)
+            self.opponent.angle = data.get("angle", self.opponent.angle)
+            self.opponent.health = data.get("health", self.opponent.health)
+
+            # Recréer les projectiles de l'adversaire depuis les données réseau
+            shells_data = data.get("shells_data", [])
+            new_opponent_shells = []
+            for sd in shells_data:
+                # Créer un Shell "fantôme" avec les données reçues
+                s = Shell(sd["x"], sd["y"], 0, self.opponent)
+                # Écraser la vélocité calculée par le constructeur
+                s.vx = sd["vx"]
+                s.vy = sd["vy"]
+                s.bounces = sd["bounces"]
+                s.active = True
+                # Mettre la bonne couleur selon les bounces
+                s._update_color()
+                new_opponent_shells.append(s)
+            self.opponent_shells = new_opponent_shells
+
+            return True
+        except Exception as e:
+            print(f"Erreur réception données: {e}")
+            return False
 
     def _draw_health_bar(self, x, y, width, height, health, max_health=100):
         """Dessine une barre de vie"""

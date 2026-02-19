@@ -1,16 +1,20 @@
 """
 Network.py - Gestion de la communication réseau pour le jeu multijoueur
-Utilise les sockets TCP pour communiquer entre joueurs
+Utilise les sockets TCP avec un protocole à délimiteur (newline) pour
+garantir que chaque message JSON est reçu intégralement et séparément.
 """
 
 import socket
 import json
 import threading
-import time
+from collections import deque
 from Game.Network_Config import (
     CONNECTION_TIMEOUT, RECEIVE_TIMEOUT, MAX_MESSAGE_SIZE,
     SERVER_BIND_ADDRESS, DEBUG
 )
+
+# Délimiteur de fin de message (ne doit pas apparaître dans le JSON)
+_DELIMITER = b'\n'
 
 
 class NetworkServer:
@@ -21,7 +25,8 @@ class NetworkServer:
         self.server_socket = None
         self.client_socket = None
         self.is_running = False
-        self.received_data = None
+        self._queue = deque(maxlen=120)   # file de messages reçus
+        self._buffer = b""                # buffer TCP partiel
         self.lock = threading.Lock()
 
     def start(self):
@@ -36,7 +41,6 @@ class NetworkServer:
             if DEBUG:
                 print(f"[NETWORK] Serveur démarré sur {SERVER_BIND_ADDRESS}:{self.port}")
 
-            # Thread d'écoute
             thread = threading.Thread(target=self._listen, daemon=True)
             thread.start()
 
@@ -55,23 +59,37 @@ class NetworkServer:
 
             while self.is_running:
                 try:
-                    data = self.client_socket.recv(MAX_MESSAGE_SIZE).decode('utf-8')
-                    if data:
-                        with self.lock:
-                            self.received_data = data
+                    chunk = self.client_socket.recv(MAX_MESSAGE_SIZE)
+                    if not chunk:
+                        break  # connexion fermée
+                    self._buffer += chunk
+
+                    # Découper le buffer en messages complets (délimités par \n)
+                    while _DELIMITER in self._buffer:
+                        msg_bytes, self._buffer = self._buffer.split(_DELIMITER, 1)
+                        if msg_bytes:
+                            try:
+                                parsed = json.loads(msg_bytes.decode('utf-8'))
+                                with self.lock:
+                                    self._queue.append(parsed)
+                                if DEBUG:
+                                    print(f"[NETWORK-SERVER] Reçu: {parsed}")
+                            except json.JSONDecodeError:
+                                pass  # message corrompu, on l'ignore
+
                 except socket.timeout:
                     continue
-                except:
+                except Exception:
                     break
         except Exception as e:
             if DEBUG:
                 print(f"Erreur écoute: {e}")
 
     def send(self, data):
-        """Envoyer des données au client"""
+        """Envoyer des données au client (JSON + délimiteur)"""
         try:
             if self.client_socket:
-                message = json.dumps(data).encode('utf-8')
+                message = json.dumps(data, separators=(',', ':')).encode('utf-8') + _DELIMITER
                 if DEBUG:
                     print(f"[NETWORK-SERVER] Envoi: {data}")
                 self.client_socket.sendall(message)
@@ -82,24 +100,25 @@ class NetworkServer:
         return False
 
     def receive(self):
-        """Recevoir des données du client"""
+        """Recevoir le prochain message de la file d'attente"""
         with self.lock:
-            if self.received_data:
-                data = self.received_data
-                self.received_data = None
-                try:
-                    return json.loads(data)
-                except:
-                    return None
+            if self._queue:
+                return self._queue.popleft()
         return None
 
     def stop(self):
         """Arrêter le serveur"""
         self.is_running = False
-        if self.client_socket:
-            self.client_socket.close()
-        if self.server_socket:
-            self.server_socket.close()
+        try:
+            if self.client_socket:
+                self.client_socket.close()
+        except Exception:
+            pass
+        try:
+            if self.server_socket:
+                self.server_socket.close()
+        except Exception:
+            pass
 
 
 class NetworkClient:
@@ -110,7 +129,8 @@ class NetworkClient:
         self.port = port
         self.socket = None
         self.is_running = False
-        self.received_data = None
+        self._queue = deque(maxlen=120)
+        self._buffer = b""
         self.lock = threading.Lock()
 
     def connect(self):
@@ -125,7 +145,6 @@ class NetworkClient:
             if DEBUG:
                 print(f"[NETWORK-CLIENT] Connecté à {self.host}:{self.port}")
 
-            # Thread d'écoute
             thread = threading.Thread(target=self._listen, daemon=True)
             thread.start()
 
@@ -139,25 +158,36 @@ class NetworkClient:
         try:
             while self.is_running:
                 try:
-                    data = self.socket.recv(MAX_MESSAGE_SIZE).decode('utf-8')
-                    if data:
-                        with self.lock:
-                            self.received_data = data
-                        if DEBUG:
-                            print(f"[NETWORK-CLIENT] Reçu: {data}")
+                    chunk = self.socket.recv(MAX_MESSAGE_SIZE)
+                    if not chunk:
+                        break
+                    self._buffer += chunk
+
+                    while _DELIMITER in self._buffer:
+                        msg_bytes, self._buffer = self._buffer.split(_DELIMITER, 1)
+                        if msg_bytes:
+                            try:
+                                parsed = json.loads(msg_bytes.decode('utf-8'))
+                                with self.lock:
+                                    self._queue.append(parsed)
+                                if DEBUG:
+                                    print(f"[NETWORK-CLIENT] Reçu: {parsed}")
+                            except json.JSONDecodeError:
+                                pass
+
                 except socket.timeout:
                     continue
-                except:
+                except Exception:
                     break
         except Exception as e:
             if DEBUG:
                 print(f"Erreur écoute client: {e}")
 
     def send(self, data):
-        """Envoyer des données au serveur"""
+        """Envoyer des données au serveur (JSON + délimiteur)"""
         try:
             if self.socket:
-                message = json.dumps(data).encode('utf-8')
+                message = json.dumps(data, separators=(',', ':')).encode('utf-8') + _DELIMITER
                 if DEBUG:
                     print(f"[NETWORK-CLIENT] Envoi: {data}")
                 self.socket.sendall(message)
@@ -168,27 +198,20 @@ class NetworkClient:
         return False
 
     def receive(self):
-        """Recevoir des données du serveur"""
+        """Recevoir le prochain message de la file d'attente"""
         with self.lock:
-            if self.received_data:
-                data = self.received_data
-                self.received_data = None
-                try:
-                    return json.loads(data)
-                except:
-                    return None
+            if self._queue:
+                return self._queue.popleft()
         return None
 
     def disconnect(self):
         """Se déconnecter du serveur"""
         self.is_running = False
-        if self.socket:
-            self.socket.close()
-
-
-
-
-
+        try:
+            if self.socket:
+                self.socket.close()
+        except Exception:
+            pass
 
 
 
