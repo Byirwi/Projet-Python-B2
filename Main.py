@@ -5,9 +5,12 @@ from UI.Menu import MainMenu
 from UI.Multiplayer_Menu import MultiplayerMenu
 from UI.Host_Screen import HostScreen
 from UI.Join_Screen import JoinScreen
-from Game.Solo_Game import SoloGame  # ← Import du mode solo
-from Game.Multi_Game import MultiGame  # ← Import du mode multijoueur
-from Game.Network import NetworkClient  # ← Import du client réseau
+from UI.Scoreboard import Scoreboard
+from UI.Name_Input import NameInput
+from Game.Solo_Game import SoloGame
+from Game.Multi_Game import MultiGame
+from Game.Network import NetworkClient
+from Score_Manager import add_score
 
 
 def main():
@@ -28,10 +31,16 @@ def main():
             print("→ Lancement du mode SOLO...")
             solo_game = SoloGame(screen)
             result = solo_game.run()
-            
+
             if result == "MENU":
-                # Retour au menu principal
-                pass
+                # Le joueur est mort ou a appuyé ESC
+                # Si le joueur est mort, proposer de sauvegarder
+                if solo_game.player.health <= 0:
+                    name_screen = NameInput(screen, won=False, mode="solo")
+                    name = name_screen.run()
+                    if name:
+                        add_score(name, False)
+                        print(f"✅ Score enregistré pour {name} (Défaite solo)")
 
         elif choice == "MULTIJOUEUR":
             # Afficher le menu multijoueur
@@ -50,11 +59,16 @@ def main():
                     multi_game = MultiGame(screen, server, is_host=True)
                     game_result = multi_game.run()
 
-                    if game_result == "MENU":
-                        pass
+                    # Enregistrer le score (WIN ou LOSE)
+                    if game_result in ("WIN", "LOSE"):
+                        won = game_result == "WIN"
+                        name_screen = NameInput(screen, won, mode="multi")
+                        name = name_screen.run()
+                        if name:
+                            add_score(name, won)
+                            print(f"✅ Score enregistré pour {name} ({'Victoire' if won else 'Défaite'})")
 
                 elif result == "CANCEL":
-                    # Retour au menu multijoueur
                     pass
 
             elif multi_choice == "REJOINDRE":
@@ -75,23 +89,27 @@ def main():
                         multi_game = MultiGame(screen, client, is_host=False)
                         game_result = multi_game.run()
 
-                        if game_result == "MENU":
-                            pass
+                        # Enregistrer le score (WIN ou LOSE)
+                        if game_result in ("WIN", "LOSE"):
+                            won = game_result == "WIN"
+                            name_screen = NameInput(screen, won, mode="multi")
+                            name = name_screen.run()
+                            if name:
+                                add_score(name, won)
+                                print(f"✅ Score enregistré pour {name} ({'Victoire' if won else 'Défaite'})")
                     else:
                         print("❌ Erreur de connexion")
-                        join_screen.message = "Erreur: Impossible de se connecter"
 
                 elif result == "CANCEL":
-                    # Retour au menu multijoueur
                     pass
 
             elif multi_choice == "RETOUR":
-                # Retour au menu principal
                 pass
 
         elif choice == "SCORES":
             print("→ Affichage des SCORES...")
-            # TODO: Afficher scoreboard
+            scoreboard = Scoreboard(screen)
+            scoreboard.run()
 
         elif choice == "QUITTER":
             print("→ Au revoir !")
