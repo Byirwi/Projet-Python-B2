@@ -39,7 +39,7 @@ class GameMap:
             pygame.Rect(100, 700, 300, 300),
         ]
 
-        # Eau — bloque les tanks, détruit les projectiles (pas de rebond)
+        # Eau — bloque les tanks (les projectiles la traversent)
         self.water_zones = [
             pygame.Rect(1200, 200, 300, 300),
             pygame.Rect(400, 1000, 400, 200),
@@ -154,8 +154,8 @@ class GameMap:
         return self.obstacles
 
     def get_destroying_obstacles(self):
-        """Obstacles qui détruisent les projectiles (eau)."""
-        return self.water_zones
+        """Obstacles qui détruisent les projectiles (aucun actuellement)."""
+        return []
 
     def draw(self, screen, camera_x, camera_y):
         """Blit la portion visible de la map."""
