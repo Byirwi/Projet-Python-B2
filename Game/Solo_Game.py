@@ -42,7 +42,7 @@ class SoloGame:
         keys = pygame.key.get_pressed()
 
         solid_obstacles = self.game_map.get_solid_obstacles()
-        PlayerMovement.handle_input(self.player, keys, solid_obstacles)
+        PlayerMovement.handle_input(self.player, keys, solid_obstacles, self.game_map)
         self.player.update()
 
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -77,7 +77,7 @@ class SoloGame:
         # HUD — debug
         self.screen.blit(self.font_small.render(
             f"Pos: ({int(self.player.x)}, {int(self.player.y)}) | "
-            f"Angle: {int(self.player.angle)}° | Shells: {len(self.shells)}",
+            f"Chassic: {int(self.player.hull_angle)}° | Tourelle: {int(self.player.turret_angle)}° | Shells: {len(self.shells)}",
             True, (255, 255, 255)), (10, 10))
 
         # HP

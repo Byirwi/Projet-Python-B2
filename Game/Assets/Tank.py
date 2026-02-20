@@ -8,8 +8,9 @@ class Tank:
         self.width = 40
         self.height = 40
         self.color = color
-        self.speed = 3
-        self.angle = 0
+        self.speed = 15
+        self.hull_angle = 0      # Angle du châssis (déplacement)
+        self.turret_angle = 0    # Angle de la tourelle (souris)
 
         self.health = 100
 
@@ -24,12 +25,12 @@ class Tank:
         self.reload_time = 120      # ~2s @ 60 FPS
 
     def aim_at_mouse(self, mouse_x, mouse_y, camera_x, camera_y):
-        """Oriente le canon vers le curseur."""
+        """Oriente la tourelle vers le curseur (indépendamment du châssis)."""
         tank_cx = self.x + self.width // 2
         tank_cy = self.y + self.height // 2
         dx = (mouse_x + camera_x) - tank_cx
         dy = (mouse_y + camera_y) - tank_cy
-        self.angle = math.degrees(math.atan2(dy, dx)) + 90
+        self.turret_angle = math.degrees(math.atan2(dy, dx)) + 90
 
     def update(self):
         """Tick : cooldown de tir + progression du rechargement."""
@@ -57,7 +58,7 @@ class Tank:
         return self.fire_cooldown == 0 and self.ammo > 0 and not self.reloading
 
     def fire(self):
-        """Tire un projectile depuis le bout du canon. Retourne un Shell ou None."""
+        """Tire un projectile depuis le bout du canon (tourelle). Retourne un Shell ou None."""
         if not self.can_fire():
             return None
 
@@ -65,7 +66,7 @@ class Tank:
 
         cx = self.x + self.width // 2
         cy = self.y + self.height // 2
-        rad = math.radians(self.angle - 90)
+        rad = math.radians(self.turret_angle - 90)
         start_x = cx + 25 * math.cos(rad)
         start_y = cy + 25 * math.sin(rad)
 
@@ -77,97 +78,69 @@ class Tank:
             self.reloading = True
             self.reload_cooldown = self.reload_time
 
-        return Shell(start_x, start_y, self.angle, self)
+        return Shell(start_x, start_y, self.turret_angle, self)
 
     def draw(self, screen, camera_x, camera_y):
         sx = self.x - camera_x
         sy = self.y - camera_y
+        cx = sx + self.width // 2
+        cy = sy + self.height // 2
 
-        # Créer une surface temporaire pour dessiner le tank (sans rotation)
-        tank_surface = pygame.Surface((self.width + 10, self.height + 10), pygame.SRCALPHA)
-        tank_surface.fill((0, 0, 0, 0))  # Transparent
-        
-        offset_x, offset_y = 5, 5  # Offset pour la rotation autour du centre
-        
-        # ===== CORPS DU TANK =====
         body_color = self.color
         body_dark = tuple(max(0, c - 40) for c in self.color)
-        
-        # Chassis principal
-        pygame.draw.rect(tank_surface, body_color, (offset_x, offset_y, self.width, self.height))
-        
-        # Bordure du chassis
-        pygame.draw.rect(tank_surface, body_dark, (offset_x, offset_y, self.width, self.height), 2)
-        
-        # ===== CHENILLES (côtés) - Longueur complète =====
         tread_color = (40, 40, 40)
-        
-        # Chenille gauche (longueur complète)
-        pygame.draw.rect(tank_surface, tread_color, (offset_x - 4, offset_y, 4, self.height))
-        pygame.draw.rect(tank_surface, (20, 20, 20), (offset_x - 4, offset_y, 4, self.height), 1)
-        
-        # Chenille droite (longueur complète)
-        pygame.draw.rect(tank_surface, tread_color, (offset_x + self.width, offset_y, 4, self.height))
-        pygame.draw.rect(tank_surface, (20, 20, 20), (offset_x + self.width, offset_y, 4, self.height), 1)
-        
-        # ===== TOURELLE (turret) =====
-        turret_radius = 12
-        cx = offset_x + self.width // 2
-        cy = offset_y + self.height // 2
-        
+
+        # ===== CHÂSSIS (hull) avec rotation hull_angle =====
+        hull_surface = pygame.Surface((self.width + 10, self.height + 10), pygame.SRCALPHA)
+        offset = 5
+
+        # Corps principal
+        pygame.draw.rect(hull_surface, body_color, (offset, offset, self.width, self.height))
+        pygame.draw.rect(hull_surface, body_dark, (offset, offset, self.width, self.height), 2)
+
+        # Chenilles gauche/droite
+        pygame.draw.rect(hull_surface, tread_color, (offset - 4, offset, 4, self.height))
+        pygame.draw.rect(hull_surface, (20, 20, 20), (offset - 4, offset, 4, self.height), 1)
+        pygame.draw.rect(hull_surface, tread_color, (offset + self.width, offset, 4, self.height))
+        pygame.draw.rect(hull_surface, (20, 20, 20), (offset + self.width, offset, 4, self.height), 1)
+
+        rotated_hull = pygame.transform.rotate(hull_surface, -self.hull_angle)
+        hull_rect = rotated_hull.get_rect(center=(cx, cy))
+        screen.blit(rotated_hull, hull_rect.topleft)
+
+        # ===== TOURELLE (turret) avec rotation turret_angle =====
+        turret_surface = pygame.Surface((60, 60), pygame.SRCALPHA)
+        t_center = 30
+
         # Tourelle circulaire
-        pygame.draw.circle(tank_surface, body_color, (int(cx), int(cy)), turret_radius)
-        pygame.draw.circle(tank_surface, body_dark, (int(cx), int(cy)), turret_radius, 2)
-        
-        # Écoutille au centre (cercle plus clair)
-        pygame.draw.circle(tank_surface, tuple(min(255, c + 60) for c in body_color), (int(cx), int(cy)), 4)
-        
-        # ===== CANON (barrel) - orienté vers le haut (angle 0) =====
-        # Le canon pointe vers le haut au départ (angle 0)
+        pygame.draw.circle(turret_surface, body_color, (t_center, t_center), 12)
+        pygame.draw.circle(turret_surface, body_dark, (t_center, t_center), 12, 2)
+        # Écoutille
+        pygame.draw.circle(turret_surface, tuple(min(255, c + 60) for c in body_color), (t_center, t_center), 4)
+
+        # Canon (vers le haut de la surface non-tournée)
         barrel_length = 28
-        barrel_end_x = cx
-        barrel_end_y = cy - barrel_length
-        
-        # Canon épais (principal)
-        pygame.draw.line(tank_surface, (200, 200, 200), 
-                        (cx, cy), 
-                        (barrel_end_x, barrel_end_y), 5)
-        
-        # Canon foncé (intérieur pour effet 3D)
-        pygame.draw.line(tank_surface, (100, 100, 100), 
-                        (cx, cy), 
-                        (barrel_end_x, barrel_end_y), 2)
-        
-        # Anneau de sortie
-        pygame.draw.circle(tank_surface, (150, 150, 150), (int(barrel_end_x), int(barrel_end_y)), 4)
-        pygame.draw.circle(tank_surface, (80, 80, 80), (int(barrel_end_x), int(barrel_end_y)), 4, 1)
-        
-        # ===== ROTATION DU TANK =====
-        # Rotation autour du centre de la surface
-        rotated_surface = pygame.transform.rotate(tank_surface, -self.angle)
-        rotated_rect = rotated_surface.get_rect(center=(sx + self.width // 2, sy + self.height // 2))
-        
-        # Blitter la surface rotée
-        screen.blit(rotated_surface, rotated_rect.topleft)
-        
-        # ===== AFFICHAGE DE SANTÉ (barre au-dessus) - non-rotée =====
-        health_bar_width = self.width
+        barrel_end_y = t_center - barrel_length
+        pygame.draw.line(turret_surface, (200, 200, 200), (t_center, t_center), (t_center, barrel_end_y), 5)
+        pygame.draw.line(turret_surface, (100, 100, 100), (t_center, t_center), (t_center, barrel_end_y), 2)
+        pygame.draw.circle(turret_surface, (150, 150, 150), (t_center, int(barrel_end_y)), 4)
+        pygame.draw.circle(turret_surface, (80, 80, 80), (t_center, int(barrel_end_y)), 4, 1)
+
+        rotated_turret = pygame.transform.rotate(turret_surface, -self.turret_angle)
+        turret_rect = rotated_turret.get_rect(center=(cx, cy))
+        screen.blit(rotated_turret, turret_rect.topleft)
+
+        # ===== BARRE DE SANTÉ (non-tournée) =====
         health_ratio = max(0, self.health / 100.0)
-        health_bar_x = sx
-        health_bar_y = sy - 8
-        health_bar_height = 5
-        
-        # Fond de la barre de santé
-        pygame.draw.rect(screen, (50, 50, 50), (health_bar_x, health_bar_y, health_bar_width, health_bar_height))
-        
-        # Barre de santé colorée
+        hb_x, hb_y = sx, sy - 8
+        hb_w, hb_h = self.width, 5
+        pygame.draw.rect(screen, (50, 50, 50), (hb_x, hb_y, hb_w, hb_h))
         if health_ratio > 0.5:
-            health_color = (0, 255, 0)
+            hc = (0, 255, 0)
         elif health_ratio > 0.25:
-            health_color = (255, 200, 0)
+            hc = (255, 200, 0)
         else:
-            health_color = (255, 0, 0)
-        
-        pygame.draw.rect(screen, health_color, (health_bar_x, health_bar_y, health_bar_width * health_ratio, health_bar_height))
-        pygame.draw.rect(screen, (255, 255, 255), (health_bar_x, health_bar_y, health_bar_width, health_bar_height), 1)
+            hc = (255, 0, 0)
+        pygame.draw.rect(screen, hc, (hb_x, hb_y, hb_w * health_ratio, hb_h))
+        pygame.draw.rect(screen, (255, 255, 255), (hb_x, hb_y, hb_w, hb_h), 1)
 

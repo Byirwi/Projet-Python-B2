@@ -21,11 +21,24 @@ class GameMap:
 
         # Rochers / murs — solides, font rebondir les projectiles
         self.obstacles = [
-            pygame.Rect(600, 400, 100, 100),
-            pygame.Rect(1000, 600, 150, 80),
-            pygame.Rect(1600, 1100, 120, 120),
-            pygame.Rect(300, 800, 80, 200),
-            pygame.Rect(1800, 200, 200, 80),
+            pygame.Rect(587, 423, 97, 103),
+            pygame.Rect(1013, 594, 147, 83),
+            pygame.Rect(1587, 1094, 127, 118),
+            pygame.Rect(314, 812, 73, 194),
+            pygame.Rect(1823, 217, 193, 76),
+            pygame.Rect(213, 1287, 487, 213),    
+            pygame.Rect(1117, 1214, 163, 337), 
+            pygame.Rect(1794, 713, 207, 94),
+            pygame.Rect(456, 178, 89, 124),
+            pygame.Rect(2147, 934, 156, 203),
+            pygame.Rect(743, 1456, 184, 87),
+            pygame.Rect(1923, 512, 112, 168),
+            pygame.Rect(134, 423, 97, 97),
+            pygame.Rect(2314, 1289, 143, 176),
+            pygame.Rect(891, 67, 203, 119),
+            pygame.Rect(1456, 823, 78, 234),
+            pygame.Rect(523, 1089, 167, 92),
+            pygame.Rect(2089, 134, 186, 154),
         ]
 
         # Zones décoratives (pas de collision)
@@ -156,6 +169,26 @@ class GameMap:
     def get_destroying_obstacles(self):
         """Obstacles qui détruisent les projectiles (aucun actuellement)."""
         return []
+
+    def get_terrain_speed_modifier(self, tank_rect):
+        """Retourne le coefficient de vitesse selon le terrain sous le tank.
+        
+        Sable : 0.5 (50% vitesse)
+        Terre : 0.7 (70% vitesse)
+        Herbe : 1.0 (100% vitesse)
+        """
+        # Vérifier si le tank est sur du sable
+        for zone in self.sand_zones:
+            if tank_rect.colliderect(zone):
+                return 0.5
+        
+        # Vérifier si le tank est sur de la terre
+        for zone in self.dirt_zones:
+            if tank_rect.colliderect(zone):
+                return 0.7
+        
+        # Par défaut : herbe (vitesse normale)
+        return 1.0
 
     def draw(self, screen, camera_x, camera_y):
         """Blit la portion visible de la map."""

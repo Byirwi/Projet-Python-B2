@@ -75,7 +75,7 @@ class MultiGame:
         keys = pygame.key.get_pressed()
 
         solid = self.game_map.get_solid_obstacles()
-        PlayerMovement.handle_input(self.player, keys, solid)
+        PlayerMovement.handle_input(self.player, keys, solid, self.game_map)
         self.player.update()
 
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -143,7 +143,9 @@ class MultiGame:
         
         self.network.send({
             "x": self.player.x, "y": self.player.y,
-            "angle": self.player.angle, "health": self.player.health,
+            "hull_angle": self.player.hull_angle,
+            "turret_angle": self.player.turret_angle,
+            "health": self.player.health,
             "shells_data": shells_data,
             "powerups_data": powerups_data,
             "picked_powerup_ids": picked_ids,
@@ -167,7 +169,8 @@ class MultiGame:
         try:
             self.opponent.x = latest.get("x", self.opponent.x)
             self.opponent.y = latest.get("y", self.opponent.y)
-            self.opponent.angle = latest.get("angle", self.opponent.angle)
+            self.opponent.hull_angle = latest.get("hull_angle", self.opponent.hull_angle)
+            self.opponent.turret_angle = latest.get("turret_angle", self.opponent.turret_angle)
             self.opponent.health = latest.get("health", self.opponent.health)
 
             # Recréer les shells adverses depuis les données réseau
