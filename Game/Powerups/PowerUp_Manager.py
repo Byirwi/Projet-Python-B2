@@ -17,6 +17,7 @@ class PowerUpManager:
         self._active_effects = {}
         self._base_speeds = {}
         self._picked_powerup_ids = set()  # IDs des powerups pickupés (pour sync réseau)
+        self._received_powerups = {}  # Cache des powerups reçus du host {id: powerup}
 
     def _register_tank(self, tank):
         tank_id = id(tank)
@@ -93,6 +94,22 @@ class PowerUpManager:
     def apply_picked_ids(self, picked_ids):
         """Supprime les powerups pickupés côté host (reçu du client)."""
         self.powerups = [p for p in self.powerups if p.powerup_id not in picked_ids]
+
+    def sync_received_powerups(self, powerups_data):
+        """Synchronise les powerups reçus du host (côté client en multi).
+        Utilise les IDs pour maintenir la cohérence sans écraser le manager."""
+        from Game.Powerups.PowerUp import PowerUp
+        
+        # Créer un dict des powerups reçus
+        received = {}
+        for pd in powerups_data:
+            p = PowerUp(pd["type"], pd["x"], pd["y"], powerup_id=pd.get("id"))
+            received[p.powerup_id] = p
+        
+        self._received_powerups = received
+        
+        # Mettre à jour self.powerups avec les données reçues (pour affichage)
+        self.powerups = list(received.values())
 
     def get_picked_ids(self):
         """Retourne les IDs des powerups pickupés depuis le dernier appel."""

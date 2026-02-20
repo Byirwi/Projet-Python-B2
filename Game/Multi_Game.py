@@ -186,11 +186,9 @@ class MultiGame:
             self._hit_shell_ids &= active_ids
 
             # Synchroniser les power-ups reçus depuis le host
-            from Game.Powerups.PowerUp import PowerUp
-            self.powerup_manager.powerups = []
-            for pd in latest.get("powerups_data", []):
-                p = PowerUp(pd["type"], pd["x"], pd["y"], powerup_id=pd.get("id"))
-                self.powerup_manager.powerups.append(p)
+            powerups_data = latest.get("powerups_data", [])
+            if powerups_data:
+                self.powerup_manager.sync_received_powerups(powerups_data)
             
             # Host reçoit les IDs pickupés du client et les applique
             if self.is_host:
