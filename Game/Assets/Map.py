@@ -28,7 +28,7 @@ class GameMap:
             pygame.Rect(1823, 217, 193, 76),
             pygame.Rect(213, 1287, 487, 213),    
             pygame.Rect(1117, 1214, 163, 337), 
-            pygame.Rect(1794, 713, 207, 94),
+            pygame.Rect(1794, 423, 207, 94),  # Déplacé loin du spawn client (1920, 800)
             pygame.Rect(456, 178, 89, 124),
             pygame.Rect(2147, 934, 156, 203),
             pygame.Rect(743, 1456, 184, 87),
@@ -36,7 +36,7 @@ class GameMap:
             pygame.Rect(134, 423, 97, 97),
             pygame.Rect(2314, 1289, 143, 176),
             pygame.Rect(891, 67, 203, 119),
-            pygame.Rect(1456, 823, 78, 234),
+            pygame.Rect(1756, 1343, 78, 234),
             pygame.Rect(523, 1089, 167, 92),
             pygame.Rect(2089, 134, 186, 154),
         ]

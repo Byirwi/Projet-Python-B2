@@ -8,7 +8,7 @@ class Tank:
         self.width = 40
         self.height = 40
         self.color = color
-        self.speed = 15
+        self.speed = 4
         self.hull_angle = 0      # Angle du châssis (déplacement)
         self.turret_angle = 0    # Angle de la tourelle (souris)
 
