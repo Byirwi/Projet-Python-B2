@@ -1,13 +1,27 @@
 import pygame
 
 
+# Compteur global pour les IDs uniques
+_powerup_counter = 0
+
+
 class PowerUp:
-    def __init__(self, power_type, x, y):
+    def __init__(self, power_type, x, y, powerup_id=None):
+        global _powerup_counter
+        
         self.power_type = power_type
         self.x = x
         self.y = y
         self.size = 18
         self.rect = pygame.Rect(self.x - self.size // 2, self.y - self.size // 2, self.size, self.size)
+        
+        # ID unique pour synchronisation réseau
+        if powerup_id is None:
+            self.powerup_id = _powerup_counter
+            _powerup_counter += 1
+        else:
+            self.powerup_id = powerup_id
+            _powerup_counter = max(_powerup_counter, powerup_id + 1)
 
     def draw(self, screen, camera_x, camera_y):
         sx = self.rect.x - camera_x

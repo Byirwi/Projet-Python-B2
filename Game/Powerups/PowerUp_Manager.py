@@ -16,6 +16,7 @@ class PowerUpManager:
         self._spawned_at = {}
         self._active_effects = {}
         self._base_speeds = {}
+        self._picked_powerup_ids = set()  # IDs des powerups pickupés (pour sync réseau)
 
     def _register_tank(self, tank):
         tank_id = id(tank)
@@ -42,6 +43,9 @@ class PowerUpManager:
 
     def _apply_pickup(self, tank, powerup, now_ms):
         tank_id = id(tank)
+        
+        # Tracker le pickup pour la synchronisation réseau
+        self._picked_powerup_ids.add(powerup.powerup_id)
 
         if powerup.power_type == "heal":
             tank.health = min(100, tank.health + 25)
@@ -63,6 +67,38 @@ class PowerUpManager:
             if "speed" in effects:
                 del effects["speed"]
             tank.speed = base_speed
+
+    def _check_pickup(self, tank):
+        """Vérifie les pickups de powerups (utilisé côté client en multi)."""
+        now_ms = pygame.time.get_ticks()
+        self._register_tank(tank)
+
+        # Pickup - mettre à jour le rect pour éviter les bugs de collision
+        tank_rect = pygame.Rect(tank.x, tank.y, tank.width, tank.height)
+        remaining = []
+        for powerup in self.powerups:
+            # Recalculer le rect au cas où
+            powerup.rect = pygame.Rect(powerup.x - powerup.size // 2, powerup.y - powerup.size // 2, powerup.size, powerup.size)
+            
+            if tank_rect.colliderect(powerup.rect):
+                self._apply_pickup(tank, powerup, now_ms)
+                self._spawned_at.pop(id(powerup), None)
+            else:
+                remaining.append(powerup)
+        self.powerups = remaining
+
+        # Effets actifs
+        self._apply_effects_to_tank(tank, now_ms)
+
+    def apply_picked_ids(self, picked_ids):
+        """Supprime les powerups pickupés côté host (reçu du client)."""
+        self.powerups = [p for p in self.powerups if p.powerup_id not in picked_ids]
+
+    def get_picked_ids(self):
+        """Retourne les IDs des powerups pickupés depuis le dernier appel."""
+        picked = list(self._picked_powerup_ids)
+        self._picked_powerup_ids.clear()
+        return picked
 
     def update(self, tank, solid_obstacles):
         now_ms = pygame.time.get_ticks()
