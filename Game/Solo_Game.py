@@ -6,6 +6,7 @@ from Game.Assets.Camera import Camera
 from Game.Movement.Player_Movement import PlayerMovement
 from Game.Movement.Shell_Movement import ShellMovement
 from Game.Collisions.Shell_Collisions import ShellCollisions
+from Game.Powerups.PowerUp_Manager import PowerUpManager
 from Config import MENU_WIDTH, MENU_HEIGHT, FPS, MAP_WIDTH, MAP_HEIGHT
 
 
@@ -18,6 +19,7 @@ class SoloGame:
         self.player = Tank(MAP_WIDTH // 2, MAP_HEIGHT // 2, (0, 255, 0))
         self.camera = Camera(MENU_WIDTH, MENU_HEIGHT)
         self.shells = []
+        self.powerup_manager = PowerUpManager()
         self.font = pygame.font.Font(None, 36)
         self.font_small = pygame.font.Font(None, 24)
 
@@ -59,6 +61,9 @@ class SoloGame:
         if result['shells_to_remove']:
             self.shells = [s for s in self.shells if s.active]
 
+        # Spawn + pickup + effets actifs des power-ups
+        self.powerup_manager.update(self.player, solid_obstacles)
+
         self.camera.follow(self.player)
 
     def draw(self):
@@ -66,6 +71,7 @@ class SoloGame:
 
         for shell in self.shells:
             shell.draw(self.screen, self.camera.x, self.camera.y)
+        self.powerup_manager.draw(self.screen, self.camera.x, self.camera.y)
         self.player.draw(self.screen, self.camera.x, self.camera.y)
 
         # HUD — debug
@@ -101,6 +107,8 @@ class SoloGame:
             color = (255, 255, 0) if p.ammo > 0 else (255, 100, 100)
             self.screen.blit(
                 self.font_small.render(f"Munitions: {dots} [R] Recharger", True, color), (10, ammo_y))
+
+        self.powerup_manager.draw_hud(self.screen, self.font_small, self.player, x=10, y=118)
 
         self.screen.blit(self.font_small.render(
             "Flèches/ZQSD: Déplacer | Souris: Viser | Clic: Tirer | R: Recharger | ESC: Menu",

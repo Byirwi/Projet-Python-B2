@@ -8,6 +8,7 @@ from Game.Assets.Shell import Shell
 from Game.Assets.Camera import Camera
 from Game.Movement.Player_Movement import PlayerMovement
 from Game.Collisions.Shell_Collisions import ShellCollisions
+from Game.Powerups.PowerUp_Manager import PowerUpManager
 from Config import MENU_WIDTH, MENU_HEIGHT, FPS, MAP_WIDTH, MAP_HEIGHT
 from Score_Manager import add_score, get_leaderboard, merge_scores
 from UI.Name_Input import NameInput
@@ -44,6 +45,11 @@ class MultiGame:
         self.shells = []            # nos projectiles
         self.opponent_shells = []   # projectiles reçus du réseau
         self._hit_shell_ids = set() # IDs des shells adverses ayant déjà infligé des dégâts
+        
+        # Power-ups (host only pour spawn/lifetime, mais appliqué localement)
+        self.powerup_manager = PowerUpManager()
+        self.opponent_powerups = []  # powerups reçus du réseau (client)
+        
         self.running = True
         self.connection_lost = False
 
@@ -101,6 +107,13 @@ class MultiGame:
             if opp['shells_to_remove']:
                 self.opponent_shells = [s for s in self.opponent_shells if s.active]
 
+        # Power-ups (host gère spawn/lifetime, client reçoit la liste)
+        if self.is_host:
+            self.powerup_manager.update(self.player, solid)
+        else:
+            # Client applique effets en local mais ne gère pas spawn
+            self.powerup_manager._apply_effects_to_tank(self.player, pygame.time.get_ticks())
+
         self.camera.follow(self.player)
 
         if not self.receive_opponent_data():
@@ -115,10 +128,20 @@ class MultiGame:
              "vx": round(s.vx, 2), "vy": round(s.vy, 2), "bounces": s.bounces}
             for s in self.shells if s.active
         ]
+        
+        # Host envoie la liste des power-ups
+        powerups_data = []
+        if self.is_host:
+            powerups_data = [
+                {"x": round(p.x, 1), "y": round(p.y, 1), "type": p.power_type}
+                for p in self.powerup_manager.powerups
+            ]
+        
         self.network.send({
             "x": self.player.x, "y": self.player.y,
             "angle": self.player.angle, "health": self.player.health,
             "shells_data": shells_data,
+            "powerups_data": powerups_data,
         })
 
     def receive_opponent_data(self):
@@ -157,6 +180,13 @@ class MultiGame:
             # Nettoyer les anciens IDs de shells qui n'existent plus
             self._hit_shell_ids &= active_ids
 
+            # Client reçoit la liste des power-ups depuis le host
+            from Game.Powerups.PowerUp import PowerUp
+            self.opponent_powerups = []
+            for pd in latest.get("powerups_data", []):
+                p = PowerUp(pd["type"], pd["x"], pd["y"])
+                self.opponent_powerups.append(p)
+
             return True
         except Exception as e:
             print(f"Erreur réseau: {e}")
@@ -181,6 +211,13 @@ class MultiGame:
         for shell in self.opponent_shells:
             shell.draw(self.screen, self.camera.x, self.camera.y)
 
+        # Draw power-ups (host affiche les siens,client affiche ceux du host)
+        if self.is_host:
+            self.powerup_manager.draw(self.screen, self.camera.x, self.camera.y)
+        else:
+            for p in self.opponent_powerups:
+                p.draw(self.screen, self.camera.x, self.camera.y)
+
         self.player.draw(self.screen, self.camera.x, self.camera.y)
         self.opponent.draw(self.screen, self.camera.x, self.camera.y)
 
@@ -192,6 +229,9 @@ class MultiGame:
         self.screen.blit(
             self.font.render(f"Adversaire: {self.opponent.health} HP", True, (255, 80, 80)), (10, 72))
         self._draw_health_bar(10, 107, 200, 18, self.opponent.health)
+
+        # Power-up HUD (affichage des effets actifs)
+        self.powerup_manager.draw_hud(self.screen, self.font_small, self.player)
 
         # Munitions / rechargement
         if self.player.reloading:
