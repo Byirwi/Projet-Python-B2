@@ -76,7 +76,7 @@ class HostScreen:
             return "CANCEL"
 
         wait_time = 0
-        max_wait = 60 * 30  # 30 secondes
+        max_wait = 60 * 180  # 3 minutes
 
         while True:
             self.clock.tick(60)

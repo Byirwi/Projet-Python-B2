@@ -54,17 +54,31 @@ def main():
 
             elif multi_choice == "REJOINDRE":
                 # Connexion à une partie existante
-                result = JoinScreen(screen).run()
-                if isinstance(result, tuple) and result[0] == "CONNECT":
-                    ip = result[1] or "127.0.0.1"
-                    port = int(result[2]) if result[2].isdigit() else 5555
-                    client = NetworkClient(ip, port)
-                    if client.connect():
-                        game_result = MultiGame(screen, client, is_host=False).run()
-                        if game_result in ("WIN", "LOSE"):
-                            name = NameInput(screen, game_result == "WIN", mode="multi").run()
-                            if name:
-                                add_score(name, game_result == "WIN")
+                join_screen = JoinScreen(screen)
+                while True:
+                    result = join_screen.run()
+
+                    if result == "QUIT":
+                        pygame.quit()
+                        sys.exit()
+
+                    if result == "CANCEL":
+                        break
+
+                    if isinstance(result, tuple) and result[0] == "CONNECT":
+                        ip = result[1] or "127.0.0.1"
+                        port = int(result[2]) if result[2].isdigit() else 5555
+                        client = NetworkClient(ip, port)
+                        if client.connect():
+                            game_result = MultiGame(screen, client, is_host=False).run()
+                            if game_result in ("WIN", "LOSE"):
+                                name = NameInput(screen, game_result == "WIN", mode="multi").run()
+                                if name:
+                                    add_score(name, game_result == "WIN")
+                            break
+
+                        reason = client.last_error or "connexion impossible"
+                        join_screen.message = f"Erreur: {reason}"
 
         elif choice == "SCORES":
             # Affichage du tableau des scores

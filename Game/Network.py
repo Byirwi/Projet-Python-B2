@@ -7,9 +7,11 @@ Les messages sont stockés dans une deque (FIFO) côté réception.
 import socket
 import json
 import threading
+import time
 from collections import deque
 from Game.Network_Config import (
     CONNECTION_TIMEOUT, RECEIVE_TIMEOUT, MAX_MESSAGE_SIZE,
+    MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY,
     SERVER_BIND_ADDRESS, DEBUG
 )
 
@@ -27,6 +29,7 @@ class NetworkServer:
         self._queue = deque(maxlen=120)
         self._buffer = b""
         self.lock = threading.Lock()
+        self.last_error = ""
 
     def start(self):
         try:
@@ -40,7 +43,8 @@ class NetworkServer:
             threading.Thread(target=self._listen, daemon=True).start()
             return True
         except Exception as e:
-            print(f"Erreur démarrage serveur: {e}")
+            self.last_error = f"{type(e).__name__}: {e}"
+            print(f"Erreur démarrage serveur: {self.last_error}")
             return False
 
     def _listen(self):
@@ -111,21 +115,38 @@ class NetworkClient:
         self._queue = deque(maxlen=120)
         self._buffer = b""
         self.lock = threading.Lock()
+        self.last_error = ""
 
     def connect(self):
-        try:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.settimeout(CONNECTION_TIMEOUT)
-            self.socket.connect((self.host, self.port))
-            self.socket.settimeout(RECEIVE_TIMEOUT)
-            self.is_running = True
-            if DEBUG:
-                print(f"[CLIENT] Connecté à {self.host}:{self.port}")
-            threading.Thread(target=self._listen, daemon=True).start()
-            return True
-        except Exception as e:
-            print(f"Erreur connexion: {e}")
-            return False
+        self.last_error = ""
+
+        for attempt in range(1, MAX_RECONNECT_ATTEMPTS + 1):
+            try:
+                self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.socket.settimeout(CONNECTION_TIMEOUT)
+                self.socket.connect((self.host, self.port))
+                self.socket.settimeout(RECEIVE_TIMEOUT)
+                self.is_running = True
+                if DEBUG:
+                    print(f"[CLIENT] Connecté à {self.host}:{self.port} (tentative {attempt})")
+                threading.Thread(target=self._listen, daemon=True).start()
+                return True
+            except Exception as e:
+                self.last_error = f"{type(e).__name__}: {e}"
+                if DEBUG:
+                    print(f"[CLIENT] Tentative {attempt}/{MAX_RECONNECT_ATTEMPTS} échouée: {self.last_error}")
+                try:
+                    if self.socket:
+                        self.socket.close()
+                except Exception:
+                    pass
+                self.socket = None
+
+                if attempt < MAX_RECONNECT_ATTEMPTS:
+                    time.sleep(RECONNECT_DELAY)
+
+        print(f"Erreur connexion: {self.last_error}")
+        return False
 
     def _listen(self):
         """Boucle de lecture : même logique que le serveur."""

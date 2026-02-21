@@ -1,4 +1,3 @@
-# Game/Multi_Game.py
 import pygame
 import sys
 import time

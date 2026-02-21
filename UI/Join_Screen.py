@@ -35,11 +35,30 @@ class JoinScreen:
         self.cursor_visible = True
         self.cursor_timer = 0
 
+        # Zones interactives (mises à jour dans draw)
+        self.ip_rect = pygame.Rect(150, 250, 500, 50)
+        self.port_rect = pygame.Rect(150, 380, 200, 50)
+        self.connect_rect = pygame.Rect(200, 500, 400, 60)
+
+    def _build_connect_payload(self):
+        ip = self.ip_input.strip() or "127.0.0.1"
+        port = self.port_input.strip() or "5555"
+        return ("CONNECT", ip, port)
+
     def handle_events(self):
         """Gestion des événements clavier"""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "QUIT"
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self.ip_rect.collidepoint(event.pos):
+                    self.selected_field = 0
+                elif self.port_rect.collidepoint(event.pos):
+                    self.selected_field = 1
+                elif self.connect_rect.collidepoint(event.pos):
+                    self.selected_field = 2
+                    return self._build_connect_payload()
 
             if event.type == pygame.KEYDOWN:
                 # ESC pour revenir
@@ -59,8 +78,7 @@ class JoinScreen:
 
                 # Entrée pour valider
                 elif event.key == pygame.K_RETURN:
-                    if self.selected_field == 2:  # Bouton Connecter
-                        return ("CONNECT", self.ip_input, self.port_input)
+                    return self._build_connect_payload()
 
                 # Saisie de texte
                 # Saisie champ IP
@@ -98,10 +116,10 @@ class JoinScreen:
         ip_label = self.font_text.render("Adresse IP :", True, self.COLOR_TEXT)
         self.screen.blit(ip_label, ip_label.get_rect(topleft=(150, 200)))
 
-        ip_rect = pygame.Rect(150, 250, 500, 50)
+        self.ip_rect = pygame.Rect(150, 250, 500, 50)
         border = self.COLOR_INPUT_BORDER if self.selected_field == 0 else (100, 100, 100)
-        pygame.draw.rect(self.screen, self.COLOR_INPUT_BG, ip_rect)
-        pygame.draw.rect(self.screen, border, ip_rect, 3)
+        pygame.draw.rect(self.screen, self.COLOR_INPUT_BG, self.ip_rect)
+        pygame.draw.rect(self.screen, border, self.ip_rect, 3)
 
         if self.ip_input:
             ip_display = self.ip_input
@@ -115,34 +133,34 @@ class JoinScreen:
                 ip_display = "|"
         ip_color = self.COLOR_INFO if self.ip_input else (100, 150, 100)
         ip_text = self.font_text.render(ip_display, True, ip_color)
-        self.screen.blit(ip_text, ip_text.get_rect(midleft=(160, ip_rect.centery)))
+        self.screen.blit(ip_text, ip_text.get_rect(midleft=(160, self.ip_rect.centery)))
         # Placeholder grisé quand le champ est vide et pas focus
         if not self.ip_input and self.selected_field != 0:
             ph = self.font_text.render("127.0.0.1", True, (80, 80, 80))
-            self.screen.blit(ph, ph.get_rect(midleft=(160, ip_rect.centery)))
+            self.screen.blit(ph, ph.get_rect(midleft=(160, self.ip_rect.centery)))
 
         # Champ Port
         port_label = self.font_text.render("Port :", True, self.COLOR_TEXT)
         self.screen.blit(port_label, port_label.get_rect(topleft=(150, 330)))
 
-        port_rect = pygame.Rect(150, 380, 200, 50)
+        self.port_rect = pygame.Rect(150, 380, 200, 50)
         border = self.COLOR_INPUT_BORDER if self.selected_field == 1 else (100, 100, 100)
-        pygame.draw.rect(self.screen, self.COLOR_INPUT_BG, port_rect)
-        pygame.draw.rect(self.screen, border, port_rect, 3)
+        pygame.draw.rect(self.screen, self.COLOR_INPUT_BG, self.port_rect)
+        pygame.draw.rect(self.screen, border, self.port_rect, 3)
 
         port_display = self.port_input
         if self.selected_field == 1 and self.cursor_visible:
             port_display += "|"
         port_text = self.font_text.render(port_display, True, self.COLOR_INFO)
-        self.screen.blit(port_text, port_text.get_rect(midleft=(160, port_rect.centery)))
+        self.screen.blit(port_text, port_text.get_rect(midleft=(160, self.port_rect.centery)))
 
         # Bouton Connecter
-        connect_rect = pygame.Rect(200, 500, 400, 60)
+        self.connect_rect = pygame.Rect(200, 500, 400, 60)
         btn_color = self.COLOR_INPUT_BORDER if self.selected_field == 2 else (60, 60, 80)
-        pygame.draw.rect(self.screen, btn_color, connect_rect, border_radius=6)
-        pygame.draw.rect(self.screen, (200, 200, 200), connect_rect, 2, border_radius=6)
+        pygame.draw.rect(self.screen, btn_color, self.connect_rect, border_radius=6)
+        pygame.draw.rect(self.screen, (200, 200, 200), self.connect_rect, 2, border_radius=6)
         connect_text = self.font_text.render("CONNECTER", True, self.COLOR_TEXT)
-        self.screen.blit(connect_text, connect_text.get_rect(center=connect_rect.center))
+        self.screen.blit(connect_text, connect_text.get_rect(center=self.connect_rect.center))
 
         # Message
         if self.message:
